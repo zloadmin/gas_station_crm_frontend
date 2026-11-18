@@ -39,7 +39,7 @@ function formatDate(value: string) {
 
 function formatNumber(value: string | number) {
     return Number(value).toLocaleString("ru-RU", {
-        maximumFractionDigits: 3,
+        maximumFractionDigits: 4,
     });
 }
 
@@ -288,12 +288,13 @@ export default function FuelArrivalsPage() {
                             <tr>
                                 <th className="whitespace-nowrap px-4 py-3">ID</th>
                                 <th className="whitespace-nowrap px-4 py-3">Дата</th>
-                                <th className="whitespace-nowrap px-4 py-3">Услуга</th>
-                                <th className="whitespace-nowrap px-4 py-3">Тонны, т</th>
+                                <th className="whitespace-nowrap px-4 py-3">Вид топлива</th>
                                 <th className="whitespace-nowrap px-4 py-3">Объём, л</th>
+                                <th className="whitespace-nowrap px-4 py-3">Масса, кг</th>
                                 <th className="whitespace-nowrap px-4 py-3">Плотность</th>
-                                <th className="whitespace-nowrap px-4 py-3">Цена, ₽</th>
-                                <th className="whitespace-nowrap px-4 py-3">Сумма, ₽</th>
+                                <th className="whitespace-nowrap px-4 py-3">Общая сумма, ₽</th>
+                                <th className="whitespace-nowrap px-4 py-3">Цена за литр, ₽/л</th>
+
                                 <th className="whitespace-nowrap px-4 py-3 text-right">
                                     Действия
                                 </th>
@@ -332,24 +333,27 @@ export default function FuelArrivalsPage() {
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-3">
-                                            {formatNumber(Number(arrival.quantity_kg) / 1000)}
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-3">
                                             {formatNumber(arrival.volume_liters)}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-3">
+                                            {formatNumber(arrival.quantity_kg)}
+                                        </td>
+
+
+                                        <td className="whitespace-nowrap px-4 py-3">
                                             {formatNumber(arrival.density)}
+                                        </td>
+
+                                        <td className="whitespace-nowrap px-4 py-3 font-semibold">
+                                            {formatMoney(arrival.total_price)}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-3">
                                             {formatMoney(arrival.price_per_liter)}
                                         </td>
 
-                                        <td className="whitespace-nowrap px-4 py-3 font-semibold">
-                                            {formatMoney(arrival.total_price)}
-                                        </td>
+
 
                                         <td className="whitespace-nowrap px-4 py-3">
                                             <div className="flex justify-end gap-2">

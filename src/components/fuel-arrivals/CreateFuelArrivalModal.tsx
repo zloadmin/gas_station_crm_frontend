@@ -19,12 +19,11 @@ interface FormData {
     service_id: string;
     quantity_kg: string;
     volume_liters: string;
-    density: string;
     total_price: string;
 }
 
 interface FieldProps {
-    name: keyof FormData;
+    name: string;
     label: string;
     value: string;
     onChange: (value: string) => void;
@@ -34,14 +33,33 @@ interface FieldProps {
     required?: boolean;
 }
 
+function formatDateTime(value?: string | null): string {
+    if (!value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+
+        return now.toISOString().slice(0, 16);
+    }
+
+    return value.replace(" ", "T").slice(0, 16);
+}
+
 function getInitialForm(arrival?: FuelArrival): FormData {
     return {
-        date: arrival?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        date: formatDateTime(arrival?.date),
         service_id: arrival ? String(arrival.service_id) : "",
-        quantity_kg: arrival?.quantity_kg != null ? String(arrival.quantity_kg) : "",
-        volume_liters: arrival?.volume_liters != null ? String(arrival.volume_liters) : "",
-        density: arrival?.density != null ? String(arrival.density) : "",
-        total_price: arrival?.total_price != null ? String(arrival.total_price) : "",
+        quantity_kg:
+            arrival?.quantity_kg != null
+                ? String(arrival.quantity_kg)
+                : "",
+        volume_liters:
+            arrival?.volume_liters != null
+                ? String(arrival.volume_liters)
+                : "",
+        total_price:
+            arrival?.total_price != null
+                ? String(arrival.total_price)
+                : "",
     };
 }
 
@@ -64,14 +82,20 @@ function Field({
                 className="mb-1.5 block text-sm font-medium text-slate-700"
             >
                 {label}
-                {required && <span className="ml-1 text-red-500">*</span>}
+                {required && (
+                    <span className="ml-1 text-red-500">*</span>
+                )}
             </label>
 
             <input
                 id={name}
                 name={name}
                 type={type}
-                step={type === "date" ? undefined : step}
+                step={
+                    type === "date" || type === "datetime-local"
+                        ? undefined
+                        : step
+                }
                 min={type === "number" ? "0" : undefined}
                 value={value}
                 required={required}
@@ -85,7 +109,10 @@ function Field({
             />
 
             {errors.map((message, index) => (
-                <p key={index} className="mt-1 text-xs text-red-600">
+                <p
+                    key={index}
+                    className="mt-1 text-xs text-red-600"
+                >
                     {message}
                 </p>
             ))}
@@ -100,7 +127,10 @@ export default function CreateFuelArrivalModal({
                                                }: Props) {
     const isEditing = !!arrival;
 
-    const [form, setForm] = useState<FormData>(() => getInitialForm(arrival));
+    const [form, setForm] = useState<FormData>(() =>
+        getInitialForm(arrival)
+    );
+
     const [services, setServices] = useState<Service[]>([]);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [loading, setLoading] = useState(false);
@@ -110,7 +140,9 @@ export default function CreateFuelArrivalModal({
     useEffect(() => {
         getServices()
             .then(setServices)
-            .catch(() => setError("Не удалось загрузить список топлива"))
+            .catch(() =>
+                setError("Не удалось загрузить список топлива")
+            )
             .finally(() => setServicesLoading(false));
     }, []);
 
@@ -128,11 +160,25 @@ export default function CreateFuelArrivalModal({
         setError("");
     }
 
-    const measurements = [
-        form.quantity_kg,
-        form.volume_liters,
-        form.density,
-    ].filter((value) => value !== "" && Number(value) > 0).length;
+    // Плотность = масса / объём
+    const calculatedDensity =
+        Number(form.volume_liters) > 0 &&
+        Number(form.quantity_kg) > 0
+            ? (
+                Number(form.quantity_kg) /
+                Number(form.volume_liters)
+            ).toFixed(4)
+            : "";
+
+    // Цена за литр = общая сумма / объём
+    const calculatedPricePerLiter =
+        Number(form.volume_liters) > 0 &&
+        Number(form.total_price) > 0
+            ? (
+                Number(form.total_price) /
+                Number(form.volume_liters)
+            ).toFixed(2)
+            : "";
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -142,17 +188,20 @@ export default function CreateFuelArrivalModal({
         setError("");
 
         const payload = {
-            date: form.date,
+            date: form.date.replace("T", " ") + ":00",
             service_id: Number(form.service_id),
-            quantity_kg: form.quantity_kg || null,
-            volume_liters: form.volume_liters || null,
-            density: form.density || null,
+            quantity_kg: form.quantity_kg,
+            volume_liters: form.volume_liters,
+            density: calculatedDensity,
             total_price: Number(form.total_price),
         };
 
         try {
             if (arrival) {
-                await api.put(`/fuel-arrivals/${arrival.id}`, payload);
+                await api.put(
+                    `/fuel-arrivals/${arrival.id}`,
+                    payload
+                );
             } else {
                 await api.post("/fuel-arrivals", payload);
             }
@@ -161,7 +210,8 @@ export default function CreateFuelArrivalModal({
             onClose();
         } catch (err: any) {
             if (err.response?.status === 422) {
-                const validationErrors = err.response.data.errors ?? {};
+                const validationErrors =
+                    err.response.data.errors ?? {};
 
                 setErrors(validationErrors);
 
@@ -175,7 +225,9 @@ export default function CreateFuelArrivalModal({
             } else {
                 setError(
                     err.response?.data?.message ??
-                    `Не удалось ${isEditing ? "обновить" : "создать"} приход топлива`
+                    `Не удалось ${
+                        isEditing ? "обновить" : "создать"
+                    } приход топлива`
                 );
             }
         } finally {
@@ -187,17 +239,25 @@ export default function CreateFuelArrivalModal({
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget && !loading) {
+                if (
+                    e.target === e.currentTarget &&
+                    !loading
+                ) {
                     onClose();
                 }
             }}
         >
             <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl">
+
+                {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                     <div>
                         <h2 className="text-lg font-semibold text-slate-900">
-                            {isEditing ? "Редактирование прихода" : "Новый приход топлива"}
+                            {isEditing
+                                ? "Редактирование прихода"
+                                : "Новый приход топлива"}
                         </h2>
+
                         <p className="mt-1 text-xs text-slate-500">
                             {isEditing
                                 ? `Редактирование прихода №${arrival.id}`
@@ -217,6 +277,8 @@ export default function CreateFuelArrivalModal({
 
                 <form onSubmit={handleSubmit}>
                     <div className="max-h-[70vh] space-y-5 overflow-y-auto p-6">
+
+                        {/* Errors */}
                         {error && (
                             <div
                                 role="alert"
@@ -225,17 +287,23 @@ export default function CreateFuelArrivalModal({
                                 <p className="font-medium">
                                     Не удалось сохранить приход
                                 </p>
-                                <p className="mt-1">{error}</p>
+
+                                <p className="mt-1">
+                                    {error}
+                                </p>
                             </div>
                         )}
 
+                        {/* Date and service */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <Field
                                 name="date"
-                                label="Дата прихода"
-                                type="date"
+                                label="Дата и время прихода"
+                                type="datetime-local"
                                 value={form.date}
-                                onChange={(value) => updateField("date", value)}
+                                onChange={(value) =>
+                                    updateField("date", value)
+                                }
                                 errors={errors.date}
                                 required
                             />
@@ -245,7 +313,8 @@ export default function CreateFuelArrivalModal({
                                     htmlFor="service_id"
                                     className="mb-1.5 block text-sm font-medium text-slate-700"
                                 >
-                                    Вид топлива <span className="text-red-500">*</span>
+                                    Вид топлива{" "}
+                                    <span className="text-red-500">*</span>
                                 </label>
 
                                 <select
@@ -254,9 +323,14 @@ export default function CreateFuelArrivalModal({
                                     required
                                     value={form.service_id}
                                     disabled={servicesLoading}
-                                    aria-invalid={!!errors.service_id?.length}
+                                    aria-invalid={
+                                        !!errors.service_id?.length
+                                    }
                                     onChange={(e) =>
-                                        updateField("service_id", e.target.value)
+                                        updateField(
+                                            "service_id",
+                                            e.target.value
+                                        )
                                     }
                                     className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none ${
                                         errors.service_id?.length
@@ -265,77 +339,122 @@ export default function CreateFuelArrivalModal({
                                     }`}
                                 >
                                     <option value="">
-                                        {servicesLoading ? "Загрузка..." : "Выберите топливо"}
+                                        {servicesLoading
+                                            ? "Загрузка..."
+                                            : "Выберите топливо"}
                                     </option>
 
                                     {services.map((service) => (
-                                        <option key={service.id} value={service.id}>
+                                        <option
+                                            key={service.id}
+                                            value={service.id}
+                                        >
                                             {service.name}
                                         </option>
                                     ))}
                                 </select>
 
-                                {errors.service_id?.map((message, index) => (
-                                    <p key={index} className="mt-1 text-xs text-red-600">
-                                        {message}
-                                    </p>
-                                ))}
+                                {errors.service_id?.map(
+                                    (message, index) => (
+                                        <p
+                                            key={index}
+                                            className="mt-1 text-xs text-red-600"
+                                        >
+                                            {message}
+                                        </p>
+                                    )
+                                )}
                             </div>
                         </div>
 
+                        {/* Fuel parameters */}
                         <div>
-                            <h3 className="mb-1 text-sm font-semibold text-slate-800">
-                                Параметры топлива
-                            </h3>
 
-                            <p className="mb-3 text-xs text-slate-500">
-                                Заполните минимум два параметра из трёх.
-                                Заполнено: {measurements}/3
-                            </p>
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <Field
-                                    name="quantity_kg"
-                                    label="Масса, кг"
-                                    value={form.quantity_kg}
-                                    onChange={(value) => updateField("quantity_kg", value)}
-                                    errors={errors.quantity_kg}
-                                />
-
                                 <Field
                                     name="volume_liters"
                                     label="Объём, л"
                                     value={form.volume_liters}
-                                    onChange={(value) => updateField("volume_liters", value)}
+                                    onChange={(value) =>
+                                        updateField(
+                                            "volume_liters",
+                                            value
+                                        )
+                                    }
                                     errors={errors.volume_liters}
+                                    required
                                 />
 
                                 <Field
-                                    name="density"
-                                    label="Плотность"
-                                    value={form.density}
-                                    onChange={(value) => updateField("density", value)}
-                                    errors={errors.density}
+                                    name="quantity_kg"
+                                    label="Масса, кг"
+                                    value={form.quantity_kg}
+                                    onChange={(value) =>
+                                        updateField(
+                                            "quantity_kg",
+                                            value
+                                        )
+                                    }
+                                    errors={errors.quantity_kg}
+                                    required
                                 />
+
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                                        Плотность, кг/л
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={calculatedDensity}
+                                        readOnly
+                                        placeholder="Автоматически"
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 outline-none"
+                                    />
+                                </div>
                             </div>
                         </div>
 
+                        {/* Price */}
                         <div>
                             <h3 className="mb-3 text-sm font-semibold text-slate-800">
                                 Стоимость
                             </h3>
 
-                            <Field
-                                name="total_price"
-                                label="Общая сумма, ₽"
-                                value={form.total_price}
-                                onChange={(value) => updateField("total_price", value)}
-                                errors={errors.total_price}
-                                required
-                            />
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <Field
+                                    name="total_price"
+                                    label="Общая сумма, ₽"
+                                    value={form.total_price}
+                                    onChange={(value) =>
+                                        updateField(
+                                            "total_price",
+                                            value
+                                        )
+                                    }
+                                    errors={errors.total_price}
+                                    required
+                                />
+
+                                <div>
+                                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                                        Цена за литр, ₽/л
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        value={calculatedPricePerLiter}
+                                        readOnly
+                                        placeholder="Автоматически"
+                                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 outline-none"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
+                    {/* Footer */}
                     <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
                         <button
                             type="button"
@@ -348,13 +467,23 @@ export default function CreateFuelArrivalModal({
 
                         <button
                             type="submit"
-                            disabled={loading || servicesLoading || services.length === 0}
+                            disabled={
+                                loading ||
+                                servicesLoading ||
+                                services.length === 0
+                            }
                             className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                         >
                             {loading && (
-                                <Loader2 size={16} className="animate-spin" />
+                                <Loader2
+                                    size={16}
+                                    className="animate-spin"
+                                />
                             )}
-                            {isEditing ? "Сохранить изменения" : "Создать приход"}
+
+                            {isEditing
+                                ? "Сохранить изменения"
+                                : "Создать приход"}
                         </button>
                     </div>
                 </form>
