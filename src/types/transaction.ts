@@ -2,12 +2,10 @@ export interface TransactionFilters {
     date_from: string;
     date_to: string;
     service_id?: number;
-    terminal_id?: number;
+    tid?: number;
     terminal_service_id?: number;
-    payment_type: string;
-    status: string;
-    id: string;
-    tid: string;
+    type: string;
+    id?: number;
     per_page: number;
     page: number;
 }

@@ -19,12 +19,10 @@ const initialFilters: TransactionFilters = {
     date_from: "",
     date_to: "",
     service_id: undefined,
-    terminal_id: undefined,
+    tid: undefined,
     terminal_service_id: undefined,
-    payment_type: "",
-    status: "",
-    id: "",
-    tid: "",
+    type: "",
+    id: undefined,
     per_page: 15,
     page: 1,
 };
@@ -113,7 +111,7 @@ export default function TransactionsPage() {
         setFilters((prev) => {
             const numericFields = [
                 "service_id",
-                "terminal_id",
+                "tid",
                 "terminal_service_id",
                 "per_page",
             ];
@@ -228,21 +226,7 @@ export default function TransactionsPage() {
                         </select>
                     </div>
 
-                    {/* Терминал */}
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                            Терминал
-                        </label>
-                        <input
-                            type="number"
-                            placeholder="ID терминала"
-                            value={filters.terminal_id ?? ""}
-                            onChange={(e) =>
-                                handleFilterChange("terminal_id", e.target.value)
-                            }
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                        />
-                    </div>
+
 
 
                     {/* Тип оплаты */}
@@ -251,9 +235,9 @@ export default function TransactionsPage() {
                             Тип оплаты
                         </label>
                         <select
-                            value={filters.payment_type}
+                            value={filters.type}
                             onChange={(e) =>
-                                handleFilterChange("payment_type", e.target.value)
+                                handleFilterChange("type", e.target.value)
                             }
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
                         >
@@ -266,24 +250,7 @@ export default function TransactionsPage() {
                         </select>
                     </div>
 
-                    {/* Статус операции */}
-                    <div>
-                        <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                            Статус операции
-                        </label>
-                        <select
-                            value={filters.status}
-                            onChange={(e) =>
-                                handleFilterChange("status", e.target.value)
-                            }
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                        >
-                            <option value="">Все</option>
-                            <option value="success">Успешно</option>
-                            <option value="error">Ошибка</option>
-                            <option value="pending">В обработке</option>
-                        </select>
-                    </div>
+
 
                     {/* ID операции */}
                     <div>
@@ -291,7 +258,9 @@ export default function TransactionsPage() {
                             ID операции
                         </label>
                         <input
-                            type="text"
+                            type="number"
+                            step="1"
+                            min="1"
                             value={filters.id}
                             onChange={(e) =>
                                 handleFilterChange("id", e.target.value)
@@ -307,7 +276,9 @@ export default function TransactionsPage() {
                             ID на терминале
                         </label>
                         <input
-                            type="text"
+                            type="number"
+                            step="1"
+                            min="1"
                             value={filters.tid}
                             onChange={(e) =>
                                 handleFilterChange("tid", e.target.value)
@@ -372,9 +343,9 @@ export default function TransactionsPage() {
                     </div>
                 )}
 
-                <div className="overflow-x-auto">
+                <div className="max-h-[600px] overflow-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-xs text-slate-600">
+                        <thead className="sticky top-0 z-20 bg-slate-100 text-xs text-slate-600 shadow-sm">
                         <tr>
                             <th className="whitespace-nowrap px-3 py-3">ID операции</th>
                             <th className="whitespace-nowrap px-3 py-3">ID на терминале</th>
