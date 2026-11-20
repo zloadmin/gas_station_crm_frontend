@@ -1,0 +1,133 @@
+name: Deploy Next.js
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+
+      - name: Prepare standalone
+        run: |
+          mkdir -p .next/standalone/.next
+          cp -a .next/static .next/standalone/.next/static
+
+          if [ -d public ]; then
+            cp -a public .next/standalone/public
+          fi
+
+          tar -czf release.tar.gz -C .next/standalone .
+
+      - name: Setup SSH
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload release
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp release.tar.gz \
+            "$SERVER_USER@$SERVER_HOST:/tmp/gas-station-crm-${GITHUB_SHA}.tar.gz"
+
+      - name: Deploy
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh "$SERVER_USER@$SERVER_HOST" "bash -s -- $GITHUB_SHA" <<'REMOTE'
+          set -e
+
+          SHA="$1"
+          ROOT="/var/www/gas-station-crm"
+          RELEASE="$ROOT/releases/$SHA"
+          ARCHIVE="/tmp/gas-station-crm-$SHA.tar.gz"
+
+          PREVIOUS="$(readlink -f "$ROOT/current" 2>/dev/null || true)"
+
+          mkdir -p "$RELEASE"
+          tar -xzf "$ARCHIVE" -C "$RELEASE"
+
+          ln -sfn "$RELEASE" "$ROOT/current-next"
+          mv -Tf "$ROOT/current-next" "$ROOT/current"
+
+          if ! sudo systemctl restart gas-station-crm; then
+            echo "Service restart failed"
+
+            if [ -n "$PREVIOUS" ]; then
+              ln -sfn "$PREVIOUS" "$ROOT/current-next"
+              mv -Tf "$ROOT/current-next" "$ROOT/current"
+              sudo systemctl restart gas-station-crm || true
+            fi
+
+            exit 1
+          fi
+
+          HEALTHY=0
+
+          for i in $(seq 1 15); do
+            if curl -fsS http://127.0.0.1:3000/ > /dev/null; then
+              HEALTHY=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "Health check failed"
+
+            if [ -n "$PREVIOUS" ]; then
+              ln -sfn "$PREVIOUS" "$ROOT/current-next"
+              mv -Tf "$ROOT/current-next" "$ROOT/current"
+              sudo systemctl restart gas-station-crm || true
+            fi
+
+            exit 1
+          fi
+
+          rm -f "$ARCHIVE"
+
+          ls -1dt "$ROOT"/releases/* 2>/dev/null \
+            | tail -n +6 \
+            | xargs -r rm -rf
+
+          echo "Deployment successful: $SHA"
+          REMOTE
