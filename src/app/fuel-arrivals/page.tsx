@@ -245,23 +245,27 @@ export default function FuelArrivalsPage() {
                                 <option value={100}>100</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                                &nbsp;
+                            </label>
+                            <div className="flex items-end gap-2 translate-y-0.5">
+                                <button
+                                    onClick={applyFilters}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                >
+                                    <Search size={15} />
+                                    Применить
+                                </button>
 
-                        <div className="flex items-end gap-2 translate-y-0.5">
-                            <button
-                                onClick={applyFilters}
-                                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                            >
-                                <Search size={15} />
-                                Применить
-                            </button>
-
-                            <button
-                                onClick={resetFilters}
-                                title="Сбросить фильтры"
-                                className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"
-                            >
-                                <X size={18} />
-                            </button>
+                                <button
+                                    onClick={resetFilters}
+                                    title="Сбросить фильтры"
+                                    className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -10,7 +10,7 @@ export default function MainLayout({
         <div className="min-h-screen bg-[#f3f6fb]">
             <Sidebar />
 
-            <main className="ml-[220px] min-h-screen p-6">
+            <main className="ml-16 md:ml-[220px] min-h-screen p-6">
                 {children}
             </main>
         </div>
