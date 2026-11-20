@@ -63,6 +63,12 @@ export interface Transaction {
         id: number;
         name: string;
     } | null;
+    fuelArrival?: {
+        id: number;
+        date: string;
+        price_per_liter: number;
+    } | null;
+
     card_number?: string | null;
     discount_card?: string | null;
     fuel_card?: string | null;

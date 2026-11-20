@@ -353,6 +353,9 @@ export default function TransactionsPage() {
                         <thead className="sticky top-0 z-20 bg-slate-100 text-xs text-slate-600 shadow-sm">
                         <tr>
                             <th className="whitespace-nowrap px-3 py-3">ID операции</th>
+                            <th className="whitespace-nowrap px-3 py-3">ID прихода</th>
+                            <th className="whitespace-nowrap px-3 py-3">Дата прихода</th>
+                            <th className="whitespace-nowrap px-3 py-3">Цена за литр закупка</th>
                             <th className="whitespace-nowrap px-3 py-3">ID на терминале</th>
                             <th className="whitespace-nowrap px-3 py-3">Терминал</th>
                             <th className="whitespace-nowrap px-3 py-3">Дата/Время</th>
@@ -400,6 +403,15 @@ export default function TransactionsPage() {
                                 >
                                     <td className="whitespace-nowrap px-3 py-3 font-medium">
                                         {tx.id}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 font-medium">
+                                        {tx.fuelArrival?.id}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 font-medium">
+                                        {formatDate(tx.fuelArrival?.date)}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 font-medium">
+                                        {formatMoney(tx.fuelArrival?.price_per_liter)}
                                     </td>
                                     <td className="whitespace-nowrap px-3 py-3">
                                         {displayOrDash(tx.tid)}
