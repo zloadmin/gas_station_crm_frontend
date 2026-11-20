@@ -1,8 +1,9 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     Fuel,
     LayoutDashboard,
@@ -10,6 +11,8 @@ import {
     Package,
     LogOut,
 } from "lucide-react";
+
+import { getUser, logout, User } from "@/services/auth";
 
 const menuItems = [
     {
@@ -31,6 +34,39 @@ const menuItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
+
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        getUser()
+            .then(setUser)
+            .catch(() => {
+                router.replace("/login");
+            });
+    }, [router]);
+
+    const handleLogout = async () => {
+        if (loading) return;
+
+        setLoading(true);
+
+        try {
+            await logout();
+        } catch (error) {
+            console.error("Logout error:", error);
+        } finally {
+            router.replace("/login");
+        }
+    };
+
+    const initials = user?.name
+        ?.split(" ")
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase() || "?";
 
     return (
         <aside className="fixed inset-y-0 left-0 z-40 flex w-16 flex-col bg-[#102f50] text-white md:w-[220px]">
@@ -76,25 +112,30 @@ export default function Sidebar() {
             <div className="border-t border-white/10 p-2 md:p-4">
                 <div className="flex items-center justify-center gap-3 md:justify-start">
                     <div
-                        title="Администратор"
+                        title={user?.name || "Загрузка..."}
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-300 text-xs font-bold text-[#102f50]"
                     >
-                        АИ
+                        {initials}
                     </div>
 
                     <div className="hidden min-w-0 flex-1 md:block">
-                        <div className="text-xs font-semibold">
-                            Администратор
+                        <div className="truncate text-xs font-semibold">
+                            {user?.name || "Загрузка..."}
                         </div>
-                        <div className="text-[11px] text-slate-400">
-                            Выход
+                        <div className="truncate text-[11px] text-slate-400">
+                            {user?.email || ""}
                         </div>
                     </div>
 
-                    <LogOut
-                        size={16}
-                        className="hidden shrink-0 cursor-pointer text-slate-400 hover:text-white md:block"
-                    />
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={loading}
+                        title="Выйти"
+                        className="flex shrink-0 items-center justify-center rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                    >
+                        <LogOut size={17} />
+                    </button>
                 </div>
             </div>
         </aside>
